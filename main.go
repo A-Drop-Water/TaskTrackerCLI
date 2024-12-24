@@ -28,22 +28,30 @@ func main() {
 	switch args[0] {
 	case "add":
 		// 只传入需要的任务名字参数
-		err := AddTask(args[1:])
+		err := AddTask(args)
 
 		if err != nil {
 			fmt.Println("error :", err)
 		} else {
 			fmt.Println("Add succeed!")
 		}
+	case "list":
+		// 只需传入list即可
+		err := ListAllTasks(args)
+
+		if err != nil {
+			fmt.Println("error :", err)
+		}
 
 	}
 
-	fmt.Println(args)
+	//fmt.Println(args)
 }
 
 // 状态的枚举变量
 type State int
 
+// 好像不需要这么进行定义，因为要输出的话也不好搞
 const (
 	InProgress State = iota
 	Done
@@ -110,8 +118,8 @@ func AddTask(args []string) error {
 	// 参数规范
 	// 只能有一个名字
 	// 仅此而已0
-	if len(args) != 1 {
-		return errors.New("too many args in add, only one arg required by add")
+	if len(args) != 2 {
+		return errors.New("wrong args in add, only one arg required by add")
 	}
 
 	// 参数正确
@@ -166,6 +174,31 @@ func AddTask(args []string) error {
 	}
 
 	fmt.Println("NewTask info:", newTask)
+
+	return nil
+}
+
+func ListAllTasks(args []string) error {
+	// 参数规范就是只有一个参数 list
+	if len(args) != 1 {
+		return errors.New("too many args in list, only one arg required by list")
+	}
+
+	// 直接列出所有的task
+	taskTracker, err := GetTaskTracker()
+	if err != nil {
+		return err
+	}
+
+	if len(taskTracker.Tasks) == 0 {
+		fmt.Println("No tasks found!")
+	}
+
+	fmt.Println("Tasks:")
+
+	for _, task := range taskTracker.Tasks {
+		fmt.Printf("[%d]: %s\n", task.TaskID, task.TaskName)
+	}
 
 	return nil
 }
