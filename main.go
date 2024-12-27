@@ -55,7 +55,18 @@ func main() {
 		if err != nil {
 			fmt.Println("error in delete:", err)
 		}
+	case "mark-in-progress":
+		err := MarkState(args, InProgress)
 
+		if err != nil {
+			fmt.Println("error in mark-in-progress:", err)
+		}
+	case "mark-done":
+		err := MarkState(args, Done)
+
+		if err != nil {
+			fmt.Println("error in mark-done:", err)
+		}
 	}
 
 	//fmt.Println(args)
@@ -291,6 +302,8 @@ func UpdateTask(args []string) error {
 	if id >= 1 && id <= taskTracker.Number {
 		// 直接改就行了
 		taskTracker.Tasks[id-1].TaskName = name
+		// 时间更新
+		taskTracker.Tasks[id-1].ModifyTime = time.Now()
 	} else {
 		return errors.New("task not found")
 	}
@@ -366,4 +379,44 @@ func DeleteTask(args []string) error {
 		return errors.New("task not found")
 	}
 
+}
+
+func MarkState(args []string, state State) error {
+	if len(args) != 2 {
+		return errors.New("wrong args in marking state")
+	}
+
+	// 确定参数正确，获取对应状态和id
+
+	id, err := strconv.Atoi(args[1])
+
+	if err != nil {
+		return err
+	}
+
+	// 好的接下来读取文件
+	taskTracker, err1 := GetTaskTracker()
+
+	if err1 != nil {
+		return err1
+	}
+
+	// 判断id合法性
+	if id >= 1 && id <= taskTracker.Number {
+		// 合法id 修改state
+		taskTracker.Tasks[id-1].TaskState = state
+		taskTracker.Tasks[id-1].ModifyTime = time.Now()
+	} else {
+		return errors.New("task not found")
+	}
+
+	// 写回
+
+	err3 := WriteTaskTracker(taskTracker)
+
+	if err3 != nil {
+		return err3
+	}
+
+	return nil
 }

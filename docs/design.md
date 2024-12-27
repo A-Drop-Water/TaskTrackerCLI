@@ -78,3 +78,10 @@
 * 实现
   * 和update差不多，只是直接删除对应结构体
   * 注意得遍历更新id和number
+
+### Mark task
+* 参数设置
+  * task-cli mark-in-progress 1
+  * task-cli mark-done 1
+* 实现
+  * 和前面的更新都差不多，只不过修改的东西不一样
