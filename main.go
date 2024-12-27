@@ -23,8 +23,6 @@ func main() {
 	// 参数合法
 	args := rawArg[1:]
 
-	// fmt.Println("arg size is ", len(args))
-
 	// 进行处理
 	switch args[0] {
 	case "add":
@@ -69,7 +67,6 @@ func main() {
 		}
 	}
 
-	//fmt.Println(args)
 }
 
 // 状态的枚举变量
