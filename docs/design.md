@@ -39,6 +39,7 @@
         * 用枚举 ?
         * in progress
         * done
+        * ToDo 默认
     * 任务名称
     * 任务ID
         * 怎么决定 ? 
@@ -58,3 +59,22 @@
     * 接收命令行参数
     * 进行文件的追加写入操作
     * 使用提供的json相关操作实现格式化写入
+
+### List tasks
+* 参数规范
+  * 可以只有list
+  * 或者可以带有状态，只有输入有效状态时才会列出对应的，但是无效状态不会报错
+* 实现
+  * 就是读取json文件到结构体内，然后直接一一根据指定状态打印即可
+### Update tasks
+* 参数规范
+  * task-cli update 1 "Buy groceries and cook dinner"
+  * 感觉这个没什么用啊？ 就是更新一下内容
+* 实现
+  * 读取json文件到结构体，然后更新结构体的指定内容，即名字，然后再写入到文件
+### Delete task
+* 参数规范
+  * task-cli delete 1
+* 实现
+  * 和update差不多，只是直接删除对应结构体
+  * 注意得遍历更新id和number

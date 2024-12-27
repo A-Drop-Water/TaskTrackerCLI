@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -31,7 +32,7 @@ func main() {
 		err := AddTask(args)
 
 		if err != nil {
-			fmt.Println("error :", err)
+			fmt.Println("error in add:", err)
 		} else {
 			fmt.Println("Add succeed!")
 		}
@@ -40,7 +41,19 @@ func main() {
 		err := ListAllTasks(args)
 
 		if err != nil {
-			fmt.Println("error :", err)
+			fmt.Println("error in list:", err)
+		}
+	case "update":
+		err := UpdateTask(args)
+
+		if err != nil {
+			fmt.Println("error in update:", err)
+		}
+	case "delete":
+		err := DeleteTask(args)
+
+		if err != nil {
+			fmt.Println("error in delete:", err)
 		}
 
 	}
@@ -55,7 +68,25 @@ type State int
 const (
 	InProgress State = iota
 	Done
+	Todo
+	Unknown
 )
+
+// 定义枚举值转成字符串的函数
+func (s State) String() string {
+	switch s {
+	case InProgress:
+		return "In Progress"
+	case Done:
+		return "Done"
+	case Todo:
+		return "Todo"
+
+	default:
+		return "Unknown"
+
+	}
+}
 
 // 文件的地址 定义为常量吧
 const JSONFILE = "task.json"
@@ -112,6 +143,29 @@ func GetTaskTracker() (TaskTracker, error) {
 
 }
 
+// 向文件中写入taskTracker
+func WriteTaskTracker(taskTracker TaskTracker) error {
+	// 这个权限不清楚重不重要
+	file, err := os.OpenFile(JSONFILE, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+
+	if err != nil {
+		return err
+	}
+	// 现在写入file
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+
+	err = encoder.Encode(taskTracker)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // 添加任务函数 error 返回值用来
 func AddTask(args []string) error {
 
@@ -138,9 +192,11 @@ func AddTask(args []string) error {
 	newTask := Task{
 		CreateTime: time.Now(),
 		ModifyTime: time.Now(),
-		TaskState:  InProgress,
-		TaskName:   args[0],
-		TaskID:     taskTracker.Number + 1,
+		//TaskState:  InProgress,
+		// 默认为todo
+		TaskState: Todo,
+		TaskName:  args[1],
+		TaskID:    taskTracker.Number + 1,
 		//  怎么设置  ? id应为原来存储的数量加1
 		// 原来有5个，那我的新的id就是6
 	}
@@ -153,21 +209,8 @@ func AddTask(args []string) error {
 	// 接下来文件操作 进行添加
 	// 或者说进行重新写入
 	// 截断模式打开文件， 不存在就创建  ，读写模式  ,       文件权限设置
-	file, err := os.OpenFile("task.json", os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0644)
 
-	if err != nil {
-		// fmt.Println("Error when OpenFile : ", err)
-		// return errors.New("add task open file fail")
-		return fmt.Errorf("failed to open file 'task.json' for appending: %w", err)
-	}
-
-	defer file.Close()
-
-	// 写入文件
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-
-	err2 := encoder.Encode(taskTracker)
+	err2 := WriteTaskTracker(taskTracker)
 
 	if err2 != nil {
 		return err2
@@ -180,8 +223,24 @@ func AddTask(args []string) error {
 
 func ListAllTasks(args []string) error {
 	// 参数规范就是只有一个参数 list
-	if len(args) != 1 {
-		return errors.New("too many args in list, only one arg required by list")
+	// 好的可以指定状态
+	if len(args) > 2 {
+		return errors.New("wrong args in list")
+	}
+
+	// 限定了某一类型
+	var s State
+	if len(args) == 2 {
+		switch args[1] {
+		case "done":
+			s = Done
+		case "in-progress":
+			s = InProgress
+		case "todo":
+			s = Todo
+		default:
+			s = Unknown
+		}
 	}
 
 	// 直接列出所有的task
@@ -195,10 +254,116 @@ func ListAllTasks(args []string) error {
 	}
 
 	fmt.Println("Tasks:")
-
 	for _, task := range taskTracker.Tasks {
-		fmt.Printf("[%d]: %s\n", task.TaskID, task.TaskName)
+
+		if len(args) == 1 {
+			// 只有一个参数那就都列出来
+			fmt.Printf("[%d] |%s| |%s|\n", task.TaskID, task.TaskName, task.TaskState.String())
+		} else if task.TaskState == s {
+			fmt.Printf("[%d] |%s| |%s|\n", task.TaskID, task.TaskName, task.TaskState.String())
+		}
 	}
 
 	return nil
+}
+
+func UpdateTask(args []string) error {
+	// 接收 id 和 新的 string
+	// 判断参数合法性 ?
+	if len(args) != 3 {
+		return errors.New("wrong args in update")
+	}
+
+	// 现在知道参数有两个，现在判断一个是不是数字，一个是不是string
+	id, err := strconv.Atoi(args[1])
+	if err != nil {
+		return err
+	}
+	name := args[2]
+
+	taskTracker, err1 := GetTaskTracker()
+
+	if err1 != nil {
+		return err1
+	}
+
+	// 看有没有指定id的task
+	if id >= 1 && id <= taskTracker.Number {
+		// 直接改就行了
+		taskTracker.Tasks[id-1].TaskName = name
+	} else {
+		return errors.New("task not found")
+	}
+
+	// 改完了，写回json
+
+	err2 := WriteTaskTracker(taskTracker)
+
+	if err2 != nil {
+		return err2
+	}
+
+	return nil
+
+}
+
+func DeleteTask(args []string) error {
+	if len(args) != 2 {
+		return errors.New("wrong args in delete")
+	}
+
+	// 现在知道参数
+	id, err := strconv.Atoi(args[1])
+	if err != nil {
+		return err
+	}
+
+	taskTracker, err1 := GetTaskTracker()
+
+	if err1 != nil {
+		return err1
+	}
+
+	// 看有没有指定id的task
+	if id >= 1 && id <= taskTracker.Number {
+		// 直接删除对应的task 比如这个task的下标是 id - 1
+		// 然后 task [id:]后面全部id减1 number --
+
+		//
+
+		// 边界问题 ? 比如只有一个1       删除后就是0 number变为0   task[1:] 会直接报错吧 ? 特判呗
+		// 但好像没有问题
+		// 删除的id位置是 id - 1 所以应该是从 id开始减少
+		// 这样好像是值传递 ?
+		//for _, task := range taskTracker.Tasks[id:] {
+		//	task.TaskID--
+		//}
+
+		for i := id; i < taskTracker.Number; i++ {
+			taskTracker.Tasks[i].TaskID--
+		}
+
+		taskTracker.Number--
+
+		taskTracker.Tasks = append(taskTracker.Tasks[:id-1], taskTracker.Tasks[id:]...)
+
+		return WriteTaskTracker(taskTracker)
+
+		//if taskTracker.Number == 1 {
+		//	// 只有一个那就是直接删除
+		//	// 或者说直接写入一个空的结构体
+		//	return WriteTaskTracker(TaskTracker{})
+		//} else {
+		//	// 没有边界问题
+		//	for _, task := range taskTracker.Tasks[id:] {
+		//		task.TaskID--
+		//	}
+		//
+		//	// 删除id位置，但是id的位置对应下标是  id - 1
+		//	taskTracker.Tasks = append(taskTracker.Tasks[:id-1], taskTracker.Tasks[id:]...)
+		//}
+	} else {
+		return errors.New("task not found")
+	}
+
 }
